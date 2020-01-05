@@ -1,0 +1,181 @@
+# Food-Hygiene
+Lists all restaurants and the food hygiene ratings and lets you navigate through while also being able to view their customer ratings. implements a search function to allow you to view business easier 
+
+
+
+<!DOCTYPE html>
+<html> 
+    <head> 
+
+        <style>
+            p {
+                border: 1px solid black;
+                text-align: left;
+                padding: 8px;
+            }
+            table {
+                font-family: arial, sans-serif;
+                border-collapse: collapse;
+                width: 100%;
+            }
+            td, th {
+                border: 1px solid black;
+                text-align: left;
+                padding: 8px;
+            }
+            tr:nth-child(even) {
+                background-color: #dddddd;
+            }  
+
+        </style>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css" />
+
+        <title>Hygiene Ratings</title>
+        <script>
+
+            $(document).ready(function() {
+
+                getPage(1);
+                makeBtns();
+                searchButton();
+
+                //This uses a get method to get the page of the business and creates the table.
+                function getPage(page) {   
+
+                    $.get("https://www.cs.kent.ac.uk/people/staff/yh/co539_a2_data/hygiene.php?op=get&page=" + page, function(result) {
+                        createTable(result);
+
+                    }, "json");    
+                }
+
+                //Creates the table using a $.each loop checking through the values and laying them out accordingly.
+                function createTable(result) {
+
+                    $.each(result, function(key, value) {
+                        $("#hrTable tbody").append("<tr> <td>" + value.business + "</td> <td>" + value.address + "</td> <td>" + value.type + "</td> <td>" + value.rating + "</td>" + "<td> <input type='button' class='customerRating' value='Get rating' /> </td>" + "<td>" + value.date + "</td> </tr>");
+                    });
+                    customerRating();
+
+                }
+
+                //Creates a button which has an onclick function which allows the user to view the businesses customer ratings and if that business doesnt have any customer ratings it will tell the user there are no customer ratings.
+                function customerRating() {
+
+                    $('.customerRating').on('click',function() {
+                        var currentBusiness = $(this).closest('tr').children('td:first').text();
+                        $.get("https://www.cs.kent.ac.uk/people/staff/yh/co539_a2_data/rating.php?businessName=" + currentBusiness, function(result) {
+
+                            try { 
+                                var customerRating =  "<div id='dialogBox' title='Customer Rating' >" + "<p>Average Rating:" + result[0].avgRating + "</p><p>Total Rating:" + result[0].totalRatings + "</p></div>";
+
+                            } catch(e) {
+
+                                var customerRating = "<div id='dialogBox' title='Customer Rating' >" + "<p>Customer rating not found </p>" + "</div>";
+                            }
+
+                            $(customerRating).dialog( {
+                                resizable: false,
+                                width: 'auto'   
+
+                            });
+
+                        });
+                    });
+                }
+
+                //Loops through all of the pages and creates the correct amount of buttons based on the amount of pages there are.
+                function makeBtns() {        
+
+                    $.get("https://www.cs.kent.ac.uk/people/staff/yh/co539_a2_data/hygiene.php?op=pages", function(result) {
+
+                        for(x = 1; x < result.pages; x++) {
+                            var button = $("<input type='button' class='buttons' value='" + x + "' />");
+                            button.attr("id", "setBtn" + x);
+                            $("#pageButtons").append(button); 
+                            changeData(x);
+
+                        }
+                    }, "json");
+                }
+
+                //Sets the button to have a onclick function which clears the table and then creates the tables based on the selected button page number you have selected.
+                function changeData(i) {
+
+                    $("#setBtn" + i).on('click', function() {
+                        clearTable(); 
+                        getPage(i);
+
+                    });
+                }
+
+                //function to clear the table
+                function clearTable() {
+                    $("#hrTable tbody").empty();
+                }
+
+                //Creates an onclick function which gets the data from the $.get function, clears the table and then creates the table based off the searched business. This also sets up an autocomplete function which fills in the search bar when you search for a specific business.
+                function searchButton() {
+                    var autoComplete = ["Manak Supermarket", "Martins", "Rianos", "Tops Pizza"];
+                    $("#searchBusiness").autocomplete({
+                        source: autoComplete
+                    });
+                    $('#searchButton').click(function() {
+                        
+                        var search = $("#searchBusiness").val();
+                        $.get("https://www.cs.kent.ac.uk/people/staff/yh/co539_a2_data/hygiene.php?op=search&business=" + search, function(result) {
+
+                            clearTable();
+                            createTable(result);
+
+                            $.each(result, function(key, value) {
+                                for(i = 0; i < autoComplete.length; i++) {
+                                    if(!(value.business == autoComplete[i])) {                   
+                                        autoComplete.push(value.business);
+                                        break;
+                                    }
+                                }
+                            });
+                            $("#searchBusiness").autocomplete({
+                                source: autoComplete
+                            });  
+                        },"json");
+                    });
+                }
+            });
+        </script>
+    </head>
+    <!--Creates the table to enter all the data. Creates a div for the page buttons to go to, and also creates the search and submmit button to allow users to search for specific business names. -->
+    <body bgcolor=beige>
+        <p><b>This page displays the hygiene rating of restaurants in Kent.</b></p>
+        <div id="hrTable">
+            <table id="foodTable">
+                <thead>
+                    <tr> 
+                        <th>Business</th>
+                        <th>Address</th>
+                        <th>Type</th>
+                        <th>Rating</th>
+                        <th>Customer Rating</th>
+                        <th>Date</th> 
+                    </tr>
+                </thead>
+                <tbody> 
+                    <tr>               
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pageButtons">
+
+        </div>
+
+        <form class="Search">
+            Business Name:
+            <input type="text" placeholder="Search.." name="search" id="searchBusiness">
+            <button type="button" name="searchBtn" value="Submit" id="searchButton">Submit</button>
+        </form>
+    </body>
+</html>
